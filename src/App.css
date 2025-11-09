@@ -1,0 +1,42 @@
+.main-content {
+  min-height: calc(100vh - 64px);
+  padding-bottom: 20px;
+  position: relative;
+}
+
+/* Leaflet map custom styles */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-container {
+  font-family: inherit;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #61dafb;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4dc8e8;
+}

@@ -1,0 +1,205 @@
+.occupancy-tracking {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.occupancy-tracking h2 {
+  color: #2c3e50;
+  margin-bottom: 30px;
+}
+
+.tracking-form {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.form-section {
+  margin-bottom: 25px;
+}
+
+.form-section label {
+  display: block;
+  margin-bottom: 15px;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.location-select {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.location-select:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.personnel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.personnel-card {
+  background: #f8f9fa;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.personnel-card:hover {
+  border-color: #3498db;
+  background: #e3f2fd;
+}
+
+.personnel-card.selected {
+  border-color: #27ae60;
+  background: #e8f5e9;
+}
+
+.personnel-card.scheduled {
+  border-left: 4px solid #3498db;
+}
+
+.personnel-checkbox {
+  flex-shrink: 0;
+}
+
+.personnel-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.personnel-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.personnel-name {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.scheduled-badge {
+  background: #3498db;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  align-self: flex-start;
+}
+
+.submit-button {
+  width: 100%;
+  padding: 15px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 20px;
+}
+
+.submit-button:hover {
+  background: #229954;
+}
+
+.submit-button:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.tracking-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.info-section {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.info-section h3 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  font-size: 1.2rem;
+}
+
+.personnel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.personnel-item {
+  padding: 12px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.personnel-item.scheduled {
+  background: #e3f2fd;
+  border-left: 4px solid #3498db;
+}
+
+.personnel-item.actual {
+  background: #e8f5e9;
+  border-left: 4px solid #27ae60;
+}
+
+.timestamp {
+  font-size: 0.85rem;
+  color: #7f8c8d;
+}
+
+.empty-message {
+  text-align: center;
+  color: #7f8c8d;
+  padding: 20px;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .occupancy-tracking {
+    padding: 15px;
+  }
+
+  .tracking-form {
+    padding: 20px;
+  }
+
+  .personnel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tracking-info {
+    grid-template-columns: 1fr;
+  }
+}
+

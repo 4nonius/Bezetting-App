@@ -1,0 +1,50 @@
+.offline-indicator {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 999;
+  animation: slideIn 0.3s ease-out;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  color: white;
+  min-width: 250px;
+}
+
+.offline-indicator.offline {
+  background: #e74c3c;
+}
+
+.offline-indicator.online {
+  background: #27ae60;
+}
+
+.offline-indicator span {
+  font-size: 1.2rem;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .offline-indicator {
+    top: 70px;
+    right: 10px;
+    left: 10px;
+    min-width: auto;
+    font-size: 0.9rem;
+  }
+}
+
