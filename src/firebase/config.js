@@ -7,14 +7,21 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 // Your web app's Firebase configuration
+// All values should be set via environment variables
+// See .env.example for the required variables
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyCDCUY6zk3DWA1vCkc71UwE2HXiJmh4a54",
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "mealapp-70aae.firebaseapp.com",
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "mealapp-70aae",
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "mealapp-70aae.firebasestorage.app",
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "1096256305429",
-  appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:1096256305429:web:7633683d9f6a5a0c8c911c"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
+
+// Validate that all required environment variables are set
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  throw new Error('Missing required Firebase environment variables. Please check your .env file.');
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
