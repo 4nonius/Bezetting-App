@@ -12,7 +12,6 @@ import {
   Card,
   CardContent,
   Checkbox,
-  FormControlLabel,
   Button,
   Stack,
   Chip,
@@ -74,11 +73,6 @@ const OccupancyTracking = ({
   const getPersonnelName = (personnelId) => {
     const person = personnel.find(p => p.id === personnelId);
     return person ? `${person.firstName} ${person.lastName}` : 'Onbekend';
-  };
-
-  const getLocationName = (locationId) => {
-    const location = locations.find(l => l.id === locationId);
-    return location ? location.name : 'Onbekend';
   };
 
   const locationActual = selectedLocation

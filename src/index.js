@@ -15,17 +15,17 @@ root.render(
 
 // Register service worker for offline functionality
 serviceWorkerRegistration.register({
-  onSuccess: () => {
-    console.log('Service Worker registered successfully. App is ready for offline use.');
-  },
-  onUpdate: (registration) => {
-    console.log('New service worker available. Reload to update.');
-    // Optionally show update notification to user
-    if (window.confirm('Nieuwe versie beschikbaar. Herlaad de pagina?')) {
-      registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
-      window.location.reload();
+    onSuccess: () => {
+        console.log('Service Worker registered successfully. App is ready for offline use.');
+    },
+    onUpdate: (registration) => {
+        console.log('New service worker available. Reload to update.');
+        // Optionally show update notification to user
+        if (window.confirm('Nieuwe versie beschikbaar. Herlaad de pagina?')) {
+            registration.waiting?.postMessage({type: 'SKIP_WAITING'});
+            window.location.reload();
+        }
     }
-  }
 });
 
 // If you want to start measuring performance in your app, pass a function

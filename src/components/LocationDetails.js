@@ -19,12 +19,13 @@ import {
   CardContent,
   Chip,
   Stack,
-  Divider,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { format } from 'date-fns';
-import { STATUS_LABELS, STATUS_COLORS } from '../utils/data';
 
 const LocationDetails = ({
   location,
@@ -46,10 +47,12 @@ const LocationDetails = ({
     required: 1
   });
   const [newShift, setNewShift] = useState({
-    personnelId: '',
+    personnelIds: [],
     startTime: '',
     endTime: ''
   });
+  const [convertingRequirement, setConvertingRequirement] = useState(null);
+  const [selectedPersonnelForRequirements, setSelectedPersonnelForRequirements] = useState({});
 
   if (!location) return null;
 
@@ -74,12 +77,34 @@ const LocationDetails = ({
 
   const handleScheduleShift = (e) => {
     e.preventDefault();
-    onScheduleShift({
-      ...newShift,
-      locationId: location.id
+    if (newShift.personnelIds.length === 0) {
+      alert('Selecteer ten minste één persoon');
+      return;
+    }
+    
+    // Create a shift for each selected person
+    newShift.personnelIds.forEach(personnelId => {
+      onScheduleShift({
+        personnelId: parseInt(personnelId),
+        startTime: newShift.startTime,
+        endTime: newShift.endTime,
+        locationId: location.id
+      });
     });
-    setNewShift({ personnelId: '', startTime: '', endTime: '' });
+    
+    setNewShift({ personnelIds: [], startTime: '', endTime: '' });
     setShowScheduleForm(false);
+  };
+
+  const handlePersonnelToggle = (personnelId) => {
+    setNewShift(prev => {
+      const personnelIds = prev.personnelIds || [];
+      if (personnelIds.includes(personnelId)) {
+        return { ...prev, personnelIds: personnelIds.filter(id => id !== personnelId) };
+      } else {
+        return { ...prev, personnelIds: [...personnelIds, personnelId] };
+      }
+    });
   };
 
   const formatDateTime = (dateString) => {
@@ -231,18 +256,146 @@ const LocationDetails = ({
             )}
 
             <Stack spacing={2}>
-              {locationRequirements.map(req => (
+              {locationRequirements.map(req => {
+                // Check if this requirement already has shifts planned
+                const existingShifts = locationShifts.filter(shift => 
+                  shift.startTime === req.startTime && shift.endTime === req.endTime
+                );
+                const isConverting = convertingRequirement === req.id;
+                const selectedPersonnelForReq = selectedPersonnelForRequirements[req.id] || [];
+                
+                const handleConvertToShifts = () => {
+                  if (selectedPersonnelForReq.length === 0) {
+                    alert(`Selecteer ten minste ${req.required} persoon${req.required !== 1 ? 'en' : ''} voor deze shift`);
+                    return;
+                  }
+                  
+                  // Create shifts for each selected person
+                  selectedPersonnelForReq.forEach(personnelId => {
+                    onScheduleShift({
+                      personnelId: parseInt(personnelId),
+                      startTime: req.startTime,
+                      endTime: req.endTime,
+                      locationId: location.id
+                    });
+                  });
+                  
+                  setSelectedPersonnelForRequirements(prev => {
+                    const newState = { ...prev };
+                    delete newState[req.id];
+                    return newState;
+                  });
+                  setConvertingRequirement(null);
+                };
+
+                const handlePersonnelToggleForReq = (personnelId) => {
+                  setSelectedPersonnelForRequirements(prev => {
+                    const current = prev[req.id] || [];
+                    if (current.includes(personnelId)) {
+                      return { ...prev, [req.id]: current.filter(id => id !== personnelId) };
+                    } else {
+                      return { ...prev, [req.id]: [...current, personnelId] };
+                    }
+                  });
+                };
+                
+                return (
                 <Card key={req.id}>
                   <CardContent>
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {formatDateTime(req.startTime)} - {formatDateTime(req.endTime)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Aantal personen: {req.required}
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="bold">
+                          {formatDateTime(req.startTime)} - {formatDateTime(req.endTime)}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Aantal personen: {req.required}
+                        </Typography>
+                        {existingShifts.length > 0 && (
+                          <Chip 
+                            label={`${existingShifts.length} shift${existingShifts.length !== 1 ? 's' : ''} gepland`}
+                            size="small"
+                            color="success"
+                            sx={{ mt: 1 }}
+                          />
+                        )}
+                      </Box>
+                      <Button
+                        variant={isConverting ? "outlined" : "contained"}
+                        size="small"
+                        startIcon={<CheckCircleIcon />}
+                        onClick={() => {
+                          if (isConverting) {
+                            setConvertingRequirement(null);
+                            setSelectedPersonnelForRequirements(prev => {
+                              const newState = { ...prev };
+                              delete newState[req.id];
+                              return newState;
+                            });
+                          } else {
+                            setConvertingRequirement(req.id);
+                          }
+                        }}
+                        sx={{ ml: 2 }}
+                      >
+                        {isConverting ? 'Annuleren' : existingShifts.length > 0 ? 'Meer Toevoegen' : 'Naar Shifts'}
+                      </Button>
+                    </Box>
+                    
+                    {isConverting && (
+                      <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #e1e4e8' }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                          Selecteer {req.required} persoon{req.required !== 1 ? 'en' : ''} voor deze shift
+                        </Typography>
+                        <Card variant="outlined" sx={{ p: 2, maxHeight: 200, overflow: 'auto', mb: 2 }}>
+                          <Stack spacing={1}>
+                            {personnel.map(person => (
+                              <FormControlLabel
+                                key={person.id}
+                                control={
+                                  <Checkbox
+                                    checked={selectedPersonnelForReq.includes(person.id)}
+                                    onChange={() => handlePersonnelToggleForReq(person.id)}
+                                  />
+                                }
+                                label={`${person.firstName} ${person.lastName}`}
+                              />
+                            ))}
+                          </Stack>
+                        </Card>
+                        {selectedPersonnelForReq.length > 0 && (
+                          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+                            {selectedPersonnelForReq.length} persoon{selectedPersonnelForReq.length !== 1 ? 'en' : ''} geselecteerd
+                          </Typography>
+                        )}
+                        <Stack direction="row" spacing={2}>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleConvertToShifts}
+                            disabled={selectedPersonnelForReq.length === 0}
+                          >
+                            {selectedPersonnelForReq.length > 0 ? `${selectedPersonnelForReq.length} Shift${selectedPersonnelForReq.length !== 1 ? 's' : ''} Toevoegen` : 'Selecteer Personen'}
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={() => {
+                              setConvertingRequirement(null);
+                              setSelectedPersonnelForRequirements(prev => {
+                                const newState = { ...prev };
+                                delete newState[req.id];
+                                return newState;
+                              });
+                            }}
+                          >
+                            Annuleren
+                          </Button>
+                        </Stack>
+                      </Box>
+                    )}
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
               {locationRequirements.length === 0 && (
                 <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
                   Geen gevraagde bezetting gedefinieerd
@@ -269,20 +422,32 @@ const LocationDetails = ({
               <Card sx={{ mb: 3, p: 2 }}>
                 <form onSubmit={handleScheduleShift}>
                   <Stack spacing={2}>
-                    <FormControl fullWidth required>
-                      <InputLabel>Personeel</InputLabel>
-                      <Select
-                        value={newShift.personnelId}
-                        onChange={(e) => setNewShift({ ...newShift, personnelId: e.target.value })}
-                        label="Personeel"
-                      >
-                        {personnel.map(person => (
-                          <MenuItem key={person.id} value={person.id}>
-                            {person.firstName} {person.lastName}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                        Selecteer Personeel (meerdere mogelijk)
+                      </Typography>
+                      <Card variant="outlined" sx={{ p: 2, maxHeight: 200, overflow: 'auto' }}>
+                        <Stack spacing={1}>
+                          {personnel.map(person => (
+                            <FormControlLabel
+                              key={person.id}
+                              control={
+                                <Checkbox
+                                  checked={newShift.personnelIds?.includes(person.id) || false}
+                                  onChange={() => handlePersonnelToggle(person.id)}
+                                />
+                              }
+                              label={`${person.firstName} ${person.lastName}`}
+                            />
+                          ))}
+                        </Stack>
+                      </Card>
+                      {newShift.personnelIds?.length > 0 && (
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                          {newShift.personnelIds.length} persoon{newShift.personnelIds.length !== 1 ? 'en' : ''} geselecteerd
+                        </Typography>
+                      )}
+                    </Box>
                     <TextField
                       label="Start Tijdstip"
                       type="datetime-local"
@@ -303,9 +468,12 @@ const LocationDetails = ({
                     />
                     <Stack direction="row" spacing={2}>
                       <Button type="submit" variant="contained" color="primary">
-                        Toevoegen
+                        {newShift.personnelIds?.length > 0 ? `${newShift.personnelIds.length} Shift${newShift.personnelIds.length !== 1 ? 's' : ''} Toevoegen` : 'Toevoegen'}
                       </Button>
-                      <Button variant="outlined" onClick={() => setShowScheduleForm(false)}>
+                      <Button variant="outlined" onClick={() => {
+                        setShowScheduleForm(false);
+                        setNewShift({ personnelIds: [], startTime: '', endTime: '' });
+                      }}>
                         Annuleren
                       </Button>
                     </Stack>

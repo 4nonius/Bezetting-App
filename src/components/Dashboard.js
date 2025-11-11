@@ -14,19 +14,17 @@ import {
   Stack,
   Alert,
 } from '@mui/material';
-import { STATUS_LABELS, STATUS_COLORS, calculateLocationStatus } from '../utils/data';
+import { STATUS_TYPES, STATUS_LABELS, STATUS_COLORS, calculateLocationStatus } from '../utils/data';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PeopleIcon from '@mui/icons-material/People';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 
 const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupancy, onLocationSelect }) => {
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [isRealTime, setIsRealTime] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
       if (isRealTime) {
         setSelectedTime(new Date());
       }
@@ -43,7 +41,7 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
     if (!isRealTime && selectedTime instanceof Date && !isNaN(selectedTime.getTime())) {
       setDateInputValue(selectedTime.toISOString().slice(0, 16));
     }
-  }, [isRealTime]);
+  }, [isRealTime, selectedTime]);
 
   // Validate and handle date changes
   const handleTimeChange = (e) => {
@@ -111,19 +109,9 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
   };
 
   // Ensure selectedTime is always valid for display
-  const validSelectedTime = selectedTime instanceof Date && !isNaN(selectedTime.getTime()) 
+  const validSelectedTime = selectedTime instanceof Date && !isNaN(selectedTime.getTime())
     ? selectedTime 
     : new Date();
-
-  const getLocationStatus = (locationId) => {
-    return calculateLocationStatus(
-      locationId,
-      requiredOccupancy,
-      scheduledShifts,
-      actualOccupancy,
-      validSelectedTime
-    );
-  };
 
   const getLocationStats = (locationId) => {
     // Get active requirement for the selected time
@@ -156,16 +144,43 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
     // Get all actual occupancy for this location (for total count)
     const allActual = actualOccupancy.filter(occ => occ.locationId === locationId).length;
 
-    // Calculate status only if there's an active requirement
-    const status = activeRequirement 
-      ? calculateLocationStatus(
-          locationId,
-          requiredOccupancy,
-          scheduledShifts,
-          actualOccupancy,
-          validSelectedTime
-        )
-      : null;
+    // Calculate status - try active requirement first, then check if there's any data
+    let status = null;
+    if (activeRequirement) {
+      status = calculateLocationStatus(
+        locationId,
+        requiredOccupancy,
+        scheduledShifts,
+        actualOccupancy,
+        validSelectedTime
+      );
+    } else if (allRequirements.length > 0) {
+      // No active requirement, but there are requirements defined
+      // Calculate status based on totals
+      const totalRequired = allRequirements.reduce((sum, req) => sum + req.required, 0);
+      
+      if (allScheduled === 0 && allActual === 0) {
+        // No planning or occupancy at all
+        status = null; // Keep grey
+      } else if (allScheduled < totalRequired) {
+        // Incomplete planning
+        status = STATUS_TYPES.INCOMPLETE_PLANNING;
+      } else if (allScheduled >= totalRequired && allActual === 0) {
+        // Planning complete but not checked yet
+        status = STATUS_TYPES.PLANNED_NOT_CHECKED;
+      } else if (allActual > 0) {
+        // There's actual occupancy - need to check if it matches
+        // For simplicity, if actual matches required average, show as correct
+        const avgRequired = totalRequired / allRequirements.length;
+        if (allActual === avgRequired) {
+          status = STATUS_TYPES.CORRECT_OCCUPANCY;
+        } else if (allActual > avgRequired) {
+          status = STATUS_TYPES.OVER_OCCUPANCY;
+        } else {
+          status = STATUS_TYPES.UNDER_OCCUPANCY;
+        }
+      }
+    }
 
     // If there's an active requirement, show active data; otherwise show totals
     if (activeRequirement) {
@@ -179,7 +194,7 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
       // No active requirement, show totals instead
       // "Gevraagd" shows number of time slots (like in Location Details)
       return {
-        status: null,
+        status: status, // Use the calculated status (or null if no data)
         scheduled: allScheduled,
         actual: allActual,
         required: allRequirements.length // Number of time slots defined
@@ -188,7 +203,21 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
   };
 
   const getStatusColor = (status) => {
-    return status ? STATUS_COLORS[status] : '#CCCCCC';
+    if (!status) return '#CCCCCC'; // Grey for no status
+    // Handle both string keys and STATUS_TYPES enum
+    if (status in STATUS_COLORS) {
+      return STATUS_COLORS[status];
+    }
+    // Fallback for direct status type strings
+    const statusMap = {
+      'planned_not_checked': STATUS_COLORS[STATUS_TYPES.PLANNED_NOT_CHECKED],
+      'incomplete_planning': STATUS_COLORS[STATUS_TYPES.INCOMPLETE_PLANNING],
+      'correct_occupancy': STATUS_COLORS[STATUS_TYPES.CORRECT_OCCUPANCY],
+      'wrong_people': STATUS_COLORS[STATUS_TYPES.WRONG_PEOPLE],
+      'over_occupancy': STATUS_COLORS[STATUS_TYPES.OVER_OCCUPANCY],
+      'under_occupancy': STATUS_COLORS[STATUS_TYPES.UNDER_OCCUPANCY],
+    };
+    return statusMap[status] || '#CCCCCC';
   };
 
   return (
@@ -261,22 +290,16 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
                 sx={{
                   height: '100%',
                   cursor: 'pointer',
-                  borderLeft: `4px solid ${statusColor}`,
+                  border: '1px solid #e1e4e8 !important',
+                  borderLeft: '1px solid #e1e4e8 !important',
+                  borderRight: '1px solid #e1e4e8 !important',
+                  borderTop: '1px solid #e1e4e8 !important',
+                  borderBottom: '1px solid #e1e4e8 !important',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '4px',
-                    background: `linear-gradient(90deg, ${statusColor} 0%, ${statusColor}dd 100%)`,
-                  },
                   '&:hover': {
                     transform: 'translateY(-8px)',
                     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                    borderColor: '#e1e4e8 !important',
                   },
                 }}
                 onClick={() => onLocationSelect(location.id)}
@@ -298,7 +321,7 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
                       label={stats.status ? STATUS_LABELS[stats.status] : 'Geen actieve bezetting'}
                       sx={{
                         backgroundColor: statusColor,
-                        color: 'white',
+                        color: statusColor === '#CCCCCC' ? '#666666' : 'white',
                         fontWeight: 500,
                         width: '100%',
                         justifyContent: 'flex-start',

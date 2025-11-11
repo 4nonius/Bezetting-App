@@ -10,6 +10,7 @@ import {
   initialLocations,
   initialPersonnel,
   initialRequiredOccupancy,
+  initialScheduledShifts,
   STORAGE_KEYS,
   loadData,
   saveData
@@ -257,13 +258,13 @@ function App() {
   const [showLocationDetails, setShowLocationDetails] = useState(false);
 
   // Load data from localStorage or use initial data
-  const [locations, setLocations] = useState(() => loadData(STORAGE_KEYS.LOCATIONS, initialLocations));
-  const [personnel, setPersonnel] = useState(() => loadData(STORAGE_KEYS.PERSONNEL, initialPersonnel));
+  const [locations] = useState(() => loadData(STORAGE_KEYS.LOCATIONS, initialLocations));
+  const [personnel] = useState(() => loadData(STORAGE_KEYS.PERSONNEL, initialPersonnel));
   const [requiredOccupancy, setRequiredOccupancy] = useState(() => 
     loadData(STORAGE_KEYS.REQUIRED_OCCUPANCY, initialRequiredOccupancy)
   );
   const [scheduledShifts, setScheduledShifts] = useState(() => 
-    loadData(STORAGE_KEYS.SCHEDULED_SHIFTS, [])
+    loadData(STORAGE_KEYS.SCHEDULED_SHIFTS, initialScheduledShifts)
   );
   const [actualOccupancy, setActualOccupancy] = useState(() => 
     loadData(STORAGE_KEYS.ACTUAL_OCCUPANCY, [])
