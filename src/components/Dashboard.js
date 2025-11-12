@@ -144,7 +144,7 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
     // Get all actual occupancy for this location (for total count)
     const allActual = actualOccupancy.filter(occ => occ.locationId === locationId).length;
 
-    // Calculate status - try active requirement first, then check if there's any data
+    // Calculate status based on active requirement
     let status = null;
     if (activeRequirement) {
       status = calculateLocationStatus(
@@ -154,36 +154,7 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
         actualOccupancy,
         validSelectedTime
       );
-    } else if (allRequirements.length > 0) {
-      // No active requirement, but there are requirements defined
-      // Calculate status based on totals
-      const totalRequired = allRequirements.reduce((sum, req) => sum + req.required, 0);
-      
-      if (allScheduled === 0 && allActual === 0) {
-        // No planning or occupancy at all
-        status = null; // Keep grey
-      } else if (allScheduled < totalRequired) {
-        // Incomplete planning
-        status = STATUS_TYPES.INCOMPLETE_PLANNING;
-      } else if (allScheduled >= totalRequired && allActual === 0) {
-        // Planning complete but not checked yet
-        status = STATUS_TYPES.PLANNED_NOT_CHECKED;
-      } else if (allActual > 0) {
-        // There's actual occupancy - need to check if it matches
-        // For simplicity, if actual matches required average, show as correct
-        const avgRequired = totalRequired / allRequirements.length;
-        if (allActual === avgRequired) {
-          status = STATUS_TYPES.CORRECT_OCCUPANCY;
-        } else if (allActual > avgRequired) {
-          status = STATUS_TYPES.OVER_OCCUPANCY;
-        } else {
-          status = STATUS_TYPES.UNDER_OCCUPANCY;
-        }
-      }
-    }
 
-    // If there's an active requirement, show active data; otherwise show totals
-    if (activeRequirement) {
       return {
         status,
         scheduled: scheduledActive,
@@ -191,13 +162,45 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
         required: activeRequirement.required
       };
     } else {
-      // No active requirement, show totals instead
-      // "Gevraagd" shows number of time slots (like in Location Details)
+      // No active requirement at this time
+      // Check all requirements to determine overall status
+      if (allRequirements.length === 0) {
+        // No requirements defined at all - grey
+        return {
+          status: null,
+          scheduled: allScheduled,
+          actual: allActual,
+          required: 0
+        };
+      }
+
+      // Calculate total required shifts across all time slots
+      const totalRequired = allRequirements.reduce((sum, req) => sum + req.required, 0);
+
+      // Determine overall status based on totals
+      if (allScheduled === 0) {
+        status = null; // No shifts planned at all - grey
+      } else if (allScheduled < totalRequired) {
+        // Not enough shifts to cover all requirements
+        status = STATUS_TYPES.INCOMPLETE_PLANNING;
+      } else if (allScheduled >= totalRequired) {
+        // Enough shifts planned
+        if (allActual === 0) {
+          status = STATUS_TYPES.PLANNED_NOT_CHECKED;
+        } else if (allActual === totalRequired) {
+          status = STATUS_TYPES.CORRECT_OCCUPANCY;
+        } else if (allActual > totalRequired) {
+          status = STATUS_TYPES.OVER_OCCUPANCY;
+        } else {
+          status = STATUS_TYPES.UNDER_OCCUPANCY;
+        }
+      }
+
       return {
-        status: status, // Use the calculated status (or null if no data)
+        status,
         scheduled: allScheduled,
         actual: allActual,
-        required: allRequirements.length // Number of time slots defined
+        required: allRequirements.length
       };
     }
   };
@@ -265,9 +268,11 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
               sx={{ flexGrow: 1, maxWidth: 300 }}
               error={dateWarning.includes('Ongeldige')}
               helperText={dateWarning.includes('Ongeldige') ? dateWarning : ''}
-              inputProps={{
-                min: '1900-01-01T00:00',
-                max: '2100-12-31T23:59',
+              slotProps={{
+                htmlInput: {
+                  min: '1900-01-01T00:00',
+                  max: '2100-12-31T23:59',
+                }
               }}
             />
           </Stack>
