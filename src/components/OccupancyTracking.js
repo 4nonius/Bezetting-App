@@ -29,7 +29,7 @@ const OccupancyTracking = ({
   onUpdateActualOccupancy
 }) => {
   const [selectedLocation, setSelectedLocation] = useState('');
-  const [selectedPersonnel, setSelectedPersonnel] = useState([]); // Store as numbers, not strings
+  const [selectedPersonnel, setSelectedPersonnel] = useState([]);
   const [currentTime] = useState(new Date());
 
   const handleLocationChange = (e) => {
@@ -38,11 +38,13 @@ const OccupancyTracking = ({
   };
 
   const handlePersonnelToggle = (personnelId) => {
+    // Ensure personnelId is always a number
+    const id = typeof personnelId === 'string' ? parseInt(personnelId, 10) : personnelId;
     setSelectedPersonnel(prev => {
-      if (prev.includes(personnelId)) {
-        return prev.filter(id => id !== personnelId);
+      if (prev.includes(id)) {
+        return prev.filter(pid => pid !== id);
       } else {
-        return [...prev, personnelId];
+        return [...prev, id];
       }
     });
   };
@@ -57,11 +59,11 @@ const OccupancyTracking = ({
     const timestamp = currentTime.toISOString();
     const count = selectedPersonnel.length;
     
-    // Register all selected personnel
+    // Register all selected personnel (personnelId is already a number)
     selectedPersonnel.forEach(personnelId => {
       onUpdateActualOccupancy({
         locationId,
-        personnelId: personnelId, // Already a number, no need to parseInt
+        personnelId: personnelId, // Already a number, no conversion needed
         timestamp: timestamp
       });
     });
@@ -97,6 +99,7 @@ const OccupancyTracking = ({
               value={selectedLocation}
               onChange={handleLocationChange}
               label="Selecteer Locatie"
+              variant="outlined"
             >
               {locations.map(location => (
                 <MenuItem key={location.id} value={location.id}>
@@ -115,6 +118,7 @@ const OccupancyTracking = ({
                 </Typography>
                 <Grid container spacing={2}>
                   {personnel.map(person => {
+                    // Use numbers consistently throughout
                     const isSelected = selectedPersonnel.includes(person.id);
                     const isScheduled = locationScheduled.some(
                       shift => shift.personnelId === person.id

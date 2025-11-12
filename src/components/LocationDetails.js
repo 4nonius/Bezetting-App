@@ -17,8 +17,6 @@ import {
   Stack,
   Checkbox,
   FormControlLabel,
-  // Unused imports kept for potential future use:
-  // Select, MenuItem, FormControl, InputLabel
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
@@ -221,7 +219,9 @@ const LocationDetails = ({
                       onChange={(e) => setNewRequiredOccupancy({ ...newRequiredOccupancy, startTime: e.target.value })}
                       required
                       fullWidth
-                      slotProps={{ inputLabel: { shrink: true } }}
+                      slotProps={{
+                        inputLabel: { shrink: true }
+                      }}
                     />
                     <TextField
                       label="Eind Tijdstip"
@@ -230,7 +230,9 @@ const LocationDetails = ({
                       onChange={(e) => setNewRequiredOccupancy({ ...newRequiredOccupancy, endTime: e.target.value })}
                       required
                       fullWidth
-                      slotProps={{ inputLabel: { shrink: true } }}
+                      slotProps={{
+                        inputLabel: { shrink: true }
+                      }}
                     />
                     <TextField
                       label="Aantal Personen"
@@ -454,7 +456,9 @@ const LocationDetails = ({
                       onChange={(e) => setNewShift({ ...newShift, startTime: e.target.value })}
                       required
                       fullWidth
-                      slotProps={{ inputLabel: { shrink: true } }}
+                      slotProps={{
+                        inputLabel: { shrink: true }
+                      }}
                     />
                     <TextField
                       label="Eind Tijdstip"
@@ -463,7 +467,9 @@ const LocationDetails = ({
                       onChange={(e) => setNewShift({ ...newShift, endTime: e.target.value })}
                       required
                       fullWidth
-                      slotProps={{ inputLabel: { shrink: true } }}
+                      slotProps={{
+                        inputLabel: { shrink: true }
+                      }}
                     />
                     <Stack direction="row" spacing={2}>
                       <Button type="submit" variant="contained" color="primary">

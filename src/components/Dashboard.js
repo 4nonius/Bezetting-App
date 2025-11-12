@@ -21,7 +21,16 @@ import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 
 const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupancy, onLocationSelect }) => {
   const [selectedTime, setSelectedTime] = useState(new Date());
-  const [isRealTime, setIsRealTime] = useState(true);
+  // Load real-time state from localStorage, default to true
+  const [isRealTime, setIsRealTime] = useState(() => {
+    const saved = localStorage.getItem('dashboard_realTime');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  // Save real-time state to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('dashboard_realTime', isRealTime.toString());
+  }, [isRealTime]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -36,10 +45,17 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
   const [dateWarning, setDateWarning] = useState('');
   const [dateInputValue, setDateInputValue] = useState('');
 
-  // Initialize date input value
+  // Initialize date input value - format in local time, not UTC
   useEffect(() => {
     if (!isRealTime && selectedTime instanceof Date && !isNaN(selectedTime.getTime())) {
-      setDateInputValue(selectedTime.toISOString().slice(0, 16));
+      // Format date in local timezone for datetime-local input
+      const year = selectedTime.getFullYear();
+      const month = String(selectedTime.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedTime.getDate()).padStart(2, '0');
+      const hours = String(selectedTime.getHours()).padStart(2, '0');
+      const minutes = String(selectedTime.getMinutes()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}T${hours}:${minutes}`;
+      setDateInputValue(formattedDate);
     }
   }, [isRealTime, selectedTime]);
 
@@ -54,8 +70,19 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
       return;
     }
 
-    // Try to parse the date
-    const newDate = new Date(inputValue);
+    // Parse the date correctly without timezone conversion
+    // datetime-local gives us YYYY-MM-DDTHH:mm format in local time
+    // We need to parse it as local time, not UTC
+    const [datePart, timePart] = inputValue.split('T');
+    if (!datePart || !timePart) {
+      return;
+    }
+    
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
+    
+    // Create date in local timezone (not UTC)
+    const newDate = new Date(year, month - 1, day, hours, minutes);
     
     // Check if date is valid
     if (isNaN(newDate.getTime())) {
@@ -67,17 +94,17 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
     setSelectedTime(newDate);
 
     // Check if year is reasonable (between 1900 and 2100)
-    const year = newDate.getFullYear();
+    const selectedYear = newDate.getFullYear();
     const currentYear = new Date().getFullYear();
     const minYear = 1900;
     const maxYear = 2100;
 
-    if (year < minYear) {
-      setDateWarning(`Waarschuwing: Het jaar ${year} is meer dan ${currentYear - minYear} jaar geleden. Dit lijkt onwaarschijnlijk.`);
-    } else if (year > maxYear) {
-      setDateWarning(`Waarschuwing: Het jaar ${year} is meer dan ${maxYear - currentYear} jaar in de toekomst. Dit lijkt onwaarschijnlijk.`);
-    } else if (Math.abs(year - currentYear) > 100) {
-      setDateWarning(`Waarschuwing: Het jaar ${year} is meer dan 100 jaar verwijderd van het huidige jaar (${currentYear}).`);
+    if (selectedYear < minYear) {
+      setDateWarning(`Waarschuwing: Het jaar ${selectedYear} is meer dan ${currentYear - minYear} jaar geleden. Dit lijkt onwaarschijnlijk.`);
+    } else if (selectedYear > maxYear) {
+      setDateWarning(`Waarschuwing: Het jaar ${selectedYear} is meer dan ${maxYear - currentYear} jaar in de toekomst. Dit lijkt onwaarschijnlijk.`);
+    } else if (Math.abs(selectedYear - currentYear) > 100) {
+      setDateWarning(`Waarschuwing: Het jaar ${selectedYear} is meer dan 100 jaar verwijderd van het huidige jaar (${currentYear}).`);
     } else {
       setDateWarning('');
     }
@@ -92,7 +119,23 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
       return;
     }
 
-    const newDate = new Date(inputValue);
+    // Parse the date correctly without timezone conversion
+    const [datePart, timePart] = inputValue.split('T');
+    if (!datePart || !timePart) {
+      setDateWarning('Ongeldige datum');
+      const validDate = selectedTime instanceof Date && !isNaN(selectedTime.getTime()) 
+        ? selectedTime 
+        : new Date();
+      setDateInputValue(validDate.toISOString().slice(0, 16));
+      setSelectedTime(validDate);
+      return;
+    }
+    
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
+    
+    // Create date in local timezone (not UTC)
+    const newDate = new Date(year, month - 1, day, hours, minutes);
     
     if (isNaN(newDate.getTime())) {
       setDateWarning('Ongeldige datum');
@@ -104,14 +147,16 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
       setSelectedTime(validDate);
     } else {
       setSelectedTime(newDate);
-      setDateInputValue(newDate.toISOString().slice(0, 16));
+      // Format date correctly for input (local time, not UTC)
+      const formattedDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      setDateInputValue(formattedDate);
     }
   };
 
   // Ensure selectedTime is always valid for display
   const validSelectedTime = useMemo(() => {
     return selectedTime instanceof Date && !isNaN(selectedTime.getTime())
-      ? selectedTime
+      ? selectedTime 
       : new Date();
   }, [selectedTime]);
 
@@ -146,7 +191,7 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
     // Get all actual occupancy for this location (for total count)
     const allActual = actualOccupancy.filter(occ => occ.locationId === locationId).length;
 
-    // Calculate status based on active requirement
+    // Calculate status - try active requirement first, then check if there's any data
     let status = null;
     if (activeRequirement) {
       status = calculateLocationStatus(
@@ -156,7 +201,36 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
         actualOccupancy,
         validSelectedTime
       );
+    } else if (allRequirements.length > 0) {
+      // No active requirement, but there are requirements defined
+      // Calculate status based on totals
+      const totalRequired = allRequirements.reduce((sum, req) => sum + req.required, 0);
+      
+      if (allScheduled === 0 && allActual === 0) {
+        // No planning or occupancy at all
+        status = null; // Keep grey
+      } else if (allScheduled < totalRequired) {
+        // Incomplete planning
+        status = STATUS_TYPES.INCOMPLETE_PLANNING;
+      } else if (allScheduled >= totalRequired && allActual === 0) {
+        // Planning complete but not checked yet
+        status = STATUS_TYPES.PLANNED_NOT_CHECKED;
+      } else if (allActual > 0) {
+        // There's actual occupancy - need to check if it matches
+        // For simplicity, if actual matches required average, show as correct
+        const avgRequired = totalRequired / allRequirements.length;
+        if (allActual === avgRequired) {
+          status = STATUS_TYPES.CORRECT_OCCUPANCY;
+        } else if (allActual > avgRequired) {
+          status = STATUS_TYPES.OVER_OCCUPANCY;
+        } else {
+          status = STATUS_TYPES.UNDER_OCCUPANCY;
+        }
+      }
+    }
 
+    // If there's an active requirement, show active data; otherwise show totals
+    if (activeRequirement) {
       return {
         status,
         scheduled: scheduledActive,
@@ -164,45 +238,14 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
         required: activeRequirement.required
       };
     } else {
-      // No active requirement at this time
-      // Check all requirements to determine overall status
-      if (allRequirements.length === 0) {
-        // No requirements defined at all - grey
-        return {
-          status: null,
-          scheduled: allScheduled,
-          actual: allActual,
-          required: 0
-        };
-      }
-
-      // Calculate total required shifts across all time slots
+      // No active requirement, show totals instead
+      // Calculate totalRequired for consistent comparison
       const totalRequired = allRequirements.reduce((sum, req) => sum + req.required, 0);
-
-      // Determine overall status based on totals
-      if (allScheduled === 0) {
-        status = null; // No shifts planned at all - grey
-      } else if (allScheduled < totalRequired) {
-        // Not enough shifts to cover all requirements
-        status = STATUS_TYPES.INCOMPLETE_PLANNING;
-      } else if (allScheduled >= totalRequired) {
-        // Enough shifts planned
-        if (allActual === 0) {
-          status = STATUS_TYPES.PLANNED_NOT_CHECKED;
-        } else if (allActual === totalRequired) {
-          status = STATUS_TYPES.CORRECT_OCCUPANCY;
-        } else if (allActual > totalRequired) {
-          status = STATUS_TYPES.OVER_OCCUPANCY;
-        } else {
-          status = STATUS_TYPES.UNDER_OCCUPANCY;
-        }
-      }
-
       return {
-        status,
+        status: status, // Use the calculated status (or null if no data)
         scheduled: allScheduled,
         actual: allActual,
-        required: totalRequired // FIX: Use totalRequired instead of allRequirements.length
+        required: totalRequired // Return totalRequired for consistent comparison
       };
     }
   }, [requiredOccupancy, scheduledShifts, actualOccupancy, validSelectedTime]);
@@ -251,7 +294,13 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
                     if (e.target.checked) {
                       const now = new Date();
                       setSelectedTime(now);
-                      setDateInputValue(now.toISOString().slice(0, 16));
+                      // Format in local timezone
+                      const year = now.getFullYear();
+                      const month = String(now.getMonth() + 1).padStart(2, '0');
+                      const day = String(now.getDate()).padStart(2, '0');
+                      const hours = String(now.getHours()).padStart(2, '0');
+                      const minutes = String(now.getMinutes()).padStart(2, '0');
+                      setDateInputValue(`${year}-${month}-${day}T${hours}:${minutes}`);
                       setDateWarning('');
                     }
                   }}
@@ -262,7 +311,15 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
             <TextField
               type="datetime-local"
               label="Selecteer tijdstip"
-              value={dateInputValue || validSelectedTime.toISOString().slice(0, 16)}
+              value={dateInputValue || (() => {
+                // Format validSelectedTime in local timezone for datetime-local input
+                const year = validSelectedTime.getFullYear();
+                const month = String(validSelectedTime.getMonth() + 1).padStart(2, '0');
+                const day = String(validSelectedTime.getDate()).padStart(2, '0');
+                const hours = String(validSelectedTime.getHours()).padStart(2, '0');
+                const minutes = String(validSelectedTime.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+              })()}
               onChange={handleTimeChange}
               onBlur={handleTimeBlur}
               disabled={isRealTime}

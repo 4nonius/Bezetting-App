@@ -12,9 +12,9 @@ import {
   initialRequiredOccupancy,
   initialScheduledShifts,
   STORAGE_KEYS,
-  loadData,
-  saveData
+  loadData
 } from './utils/data';
+import dataSyncService from './services/dataSync';
 
 // Create Material-UI theme following Create React App design principles
 // Focus on: clean, minimal, content-first, generous whitespace
@@ -256,49 +256,74 @@ function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedLocationId, setSelectedLocationId] = useState(null);
   const [showLocationDetails, setShowLocationDetails] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load data from localStorage or use initial data
-  const [locations] = useState(() => loadData(STORAGE_KEYS.LOCATIONS, initialLocations));
-  const [personnel] = useState(() => loadData(STORAGE_KEYS.PERSONNEL, initialPersonnel));
-  const [requiredOccupancy, setRequiredOccupancy] = useState(() => 
-    loadData(STORAGE_KEYS.REQUIRED_OCCUPANCY, initialRequiredOccupancy)
-  );
-  const [scheduledShifts, setScheduledShifts] = useState(() => 
-    loadData(STORAGE_KEYS.SCHEDULED_SHIFTS, initialScheduledShifts)
-  );
-  const [actualOccupancy, setActualOccupancy] = useState(() => 
-    loadData(STORAGE_KEYS.ACTUAL_OCCUPANCY, [])
-  );
+  // State for all data
+  const [locations, setLocations] = useState([]);
+  const [personnel, setPersonnel] = useState([]);
+  const [requiredOccupancy, setRequiredOccupancy] = useState([]);
+  const [scheduledShifts, setScheduledShifts] = useState([]);
+  const [actualOccupancy, setActualOccupancy] = useState([]);
 
-  // Save data to localStorage whenever it changes
+  // Initialize data on mount
   useEffect(() => {
-    saveData(STORAGE_KEYS.LOCATIONS, locations);
-  }, [locations]);
+    const initializeData = async () => {
+      setIsLoading(true);
+      try {
+        const data = await dataSyncService.initializeData(
+          initialLocations,
+          initialPersonnel,
+          initialRequiredOccupancy,
+          initialScheduledShifts
+        );
+        
+        setLocations(data.locations);
+        setPersonnel(data.personnel);
+        setRequiredOccupancy(data.requiredOccupancy);
+        setScheduledShifts(data.scheduledShifts);
+        setActualOccupancy(data.actualOccupancy);
+      } catch (error) {
+        console.error('Error initializing data:', error);
+        // Fallback to localStorage
+        setLocations(loadData(STORAGE_KEYS.LOCATIONS, initialLocations));
+        setPersonnel(loadData(STORAGE_KEYS.PERSONNEL, initialPersonnel));
+        setRequiredOccupancy(loadData(STORAGE_KEYS.REQUIRED_OCCUPANCY, initialRequiredOccupancy));
+        setScheduledShifts(loadData(STORAGE_KEYS.SCHEDULED_SHIFTS, initialScheduledShifts));
+        setActualOccupancy(loadData(STORAGE_KEYS.ACTUAL_OCCUPANCY, []));
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  useEffect(() => {
-    saveData(STORAGE_KEYS.PERSONNEL, personnel);
-  }, [personnel]);
+    initializeData();
+  }, []);
 
+  // Setup real-time subscriptions
   useEffect(() => {
-    saveData(STORAGE_KEYS.REQUIRED_OCCUPANCY, requiredOccupancy);
-  }, [requiredOccupancy]);
+    if (!isLoading) {
+      dataSyncService.setupSubscriptions({
+        onLocationsChange: setLocations,
+        onPersonnelChange: setPersonnel,
+        onRequiredOccupancyChange: setRequiredOccupancy,
+        onScheduledShiftsChange: setScheduledShifts,
+        onActualOccupancyChange: setActualOccupancy
+      });
 
-  useEffect(() => {
-    saveData(STORAGE_KEYS.SCHEDULED_SHIFTS, scheduledShifts);
-  }, [scheduledShifts]);
-
-  useEffect(() => {
-    saveData(STORAGE_KEYS.ACTUAL_OCCUPANCY, actualOccupancy);
-  }, [actualOccupancy]);
+      return () => {
+        dataSyncService.cleanup();
+      };
+    }
+  }, [isLoading]);
 
   // Sync data when coming back online
   useEffect(() => {
     const handleOnline = () => {
-      console.log('Online - syncing data...');
+      console.log('🔄 Online - syncing data...');
+      dataSyncService.syncLocalToFirebase();
     };
 
     const handleOffline = () => {
-      console.log('Offline - using cached data');
+      console.log('📱 Offline - using cached data');
     };
 
     window.addEventListener('online', handleOnline);
@@ -320,24 +345,44 @@ function App() {
     setSelectedLocationId(null);
   };
 
-  const handleAddRequiredOccupancy = (newOccupancy) => {
-    const newId = Math.max(...requiredOccupancy.map(r => r.id), 0) + 1;
-    setRequiredOccupancy([...requiredOccupancy, { ...newOccupancy, id: newId }]);
+  const handleAddRequiredOccupancy = async (newOccupancy) => {
+    const newId = Math.max(...requiredOccupancy.map(r => r.id || 0), 0) + 1;
+    const newItem = { ...newOccupancy, id: newId };
+    const updated = [...requiredOccupancy, newItem];
+    setRequiredOccupancy(updated);
+    await dataSyncService.saveData('REQUIRED_OCCUPANCY', updated, newItem);
   };
 
-  const handleScheduleShift = (newShift) => {
-    const newId = Math.max(...scheduledShifts.map(s => s.id), 0) + 1;
-    setScheduledShifts([...scheduledShifts, { ...newShift, id: newId }]);
+  const handleScheduleShift = async (newShift) => {
+    const newId = Math.max(...scheduledShifts.map(s => s.id || 0), 0) + 1;
+    const newItem = { ...newShift, id: newId };
+    const updated = [...scheduledShifts, newItem];
+    setScheduledShifts(updated);
+    await dataSyncService.saveData('SCHEDULED_SHIFTS', updated, newItem);
   };
 
-  const handleUpdateActualOccupancy = (newOccupancy) => {
+  const handleUpdateActualOccupancy = async (newOccupancy) => {
     setActualOccupancy(prevOccupancy => {
-      const newId = Math.max(...prevOccupancy.map(a => a.id), 0) + 1;
-      return [...prevOccupancy, { ...newOccupancy, id: newId }];
+      const newId = Math.max(...prevOccupancy.map(a => a.id || 0), 0) + 1;
+      const newItem = { ...newOccupancy, id: newId };
+      const updated = [...prevOccupancy, newItem];
+      dataSyncService.saveData('ACTUAL_OCCUPANCY', updated, newItem);
+      return updated;
     });
   };
 
   const selectedLocation = locations.find(loc => loc.id === selectedLocationId);
+
+  if (isLoading) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <div className="App" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <div>Laden...</div>
+        </div>
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider theme={theme}>
