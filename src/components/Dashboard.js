@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -109,11 +109,13 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
   };
 
   // Ensure selectedTime is always valid for display
-  const validSelectedTime = selectedTime instanceof Date && !isNaN(selectedTime.getTime())
-    ? selectedTime 
-    : new Date();
+  const validSelectedTime = useMemo(() => {
+    return selectedTime instanceof Date && !isNaN(selectedTime.getTime())
+      ? selectedTime
+      : new Date();
+  }, [selectedTime]);
 
-  const getLocationStats = (locationId) => {
+  const getLocationStats = useCallback((locationId) => {
     // Get active requirement for the selected time
     const activeRequirement = requiredOccupancy.find(req => {
       const start = new Date(req.startTime);
@@ -200,10 +202,10 @@ const Dashboard = ({ locations, requiredOccupancy, scheduledShifts, actualOccupa
         status,
         scheduled: allScheduled,
         actual: allActual,
-        required: allRequirements.length
+        required: totalRequired // FIX: Use totalRequired instead of allRequirements.length
       };
     }
-  };
+  }, [requiredOccupancy, scheduledShifts, actualOccupancy, validSelectedTime]);
 
   const getStatusColor = (status) => {
     if (!status) return '#CCCCCC'; // Grey for no status

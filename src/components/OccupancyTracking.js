@@ -29,7 +29,7 @@ const OccupancyTracking = ({
   onUpdateActualOccupancy
 }) => {
   const [selectedLocation, setSelectedLocation] = useState('');
-  const [selectedPersonnel, setSelectedPersonnel] = useState([]);
+  const [selectedPersonnel, setSelectedPersonnel] = useState([]); // Store as numbers, not strings
   const [currentTime] = useState(new Date());
 
   const handleLocationChange = (e) => {
@@ -61,7 +61,7 @@ const OccupancyTracking = ({
     selectedPersonnel.forEach(personnelId => {
       onUpdateActualOccupancy({
         locationId,
-        personnelId: parseInt(personnelId),
+        personnelId: personnelId, // Already a number, no need to parseInt
         timestamp: timestamp
       });
     });
@@ -115,7 +115,7 @@ const OccupancyTracking = ({
                 </Typography>
                 <Grid container spacing={2}>
                   {personnel.map(person => {
-                    const isSelected = selectedPersonnel.includes(person.id.toString());
+                    const isSelected = selectedPersonnel.includes(person.id);
                     const isScheduled = locationScheduled.some(
                       shift => shift.personnelId === person.id
                     );
@@ -135,13 +135,13 @@ const OccupancyTracking = ({
                               boxShadow: 2,
                             },
                           }}
-                          onClick={() => handlePersonnelToggle(person.id.toString())}
+                          onClick={() => handlePersonnelToggle(person.id)}
                         >
                           <CardContent>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <Checkbox
                                 checked={isSelected}
-                                onChange={() => handlePersonnelToggle(person.id.toString())}
+                                onChange={() => handlePersonnelToggle(person.id)}
                                 onClick={(e) => e.stopPropagation()}
                               />
                               <Box sx={{ flexGrow: 1 }}>
