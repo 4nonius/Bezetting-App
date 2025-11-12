@@ -8,6 +8,8 @@ import { ExpirationPlugin } from 'workbox-expiration';
 import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
+// BackgroundSyncPlugin imported but not used - available for future offline sync
+// import { BackgroundSyncPlugin } from 'workbox-background-sync';
 
 clientsClaim();
 
@@ -150,9 +152,9 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           // Delete old caches if needed
-          // if (cacheName.startsWith('old-cache-')) {
-          //   return caches.delete(cacheName);
-          // }
+          if (cacheName.startsWith('old-cache-')) {
+            return caches.delete(cacheName);
+          }
           return Promise.resolve();
         })
       );
